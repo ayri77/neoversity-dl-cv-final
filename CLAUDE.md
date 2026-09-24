@@ -21,6 +21,20 @@ Kaggle: https://www.kaggle.com/competitions/deep-learning-for-computer-vision-an
   (формат `PetID,AdoptionSpeed`, з заголовком, порядок рядків не важливий).
 - Тексти переважно англійською (є малайська/китайська), медіана ~46 слів; 5 порожніх у train, 1 у test.
   Фото ~400×400, у середньому ~4.4 на тварину.
+- **Майже-дублікати описів** (char TF-IDF cos ≥ 0.9): 12.6 % train у групах, std таргету всередині
+  групи 0.27 проти 1.12 глобально; 208 тварин test мають двійника в train. Тому фолди —
+  **звичайні стратифіковані** (відтворюють випадковий поділ train/test), а дублікати
+  використовуються через OOF kNN-target ознаки (`src/features.knn_target_features`).
+  Будь-які target-залежні ознаки — тільки OOF по колонці `fold`.
+
+## Результати (OOF QWK, LightGBM на фолдах)
+- 02 текстові ознаки (regex+meta): 0.246; + kNN-target по тексту: 0.319.
+- 03 ознаки з фото (zero-shot + якість, без kNN): 0.547; + kNN по CLIP: 0.558
+  (строга nested-перевірка kNN: 0.566 → витоку немає). Найсильніші: zero-shot вік
+  (baby/adult/old, |ρ|≈0.31–0.35), порода pure/mixed (|ρ|≈0.28), img_knn_y (ρ=0.49).
+- 04 бейзлайн: ручні ознаки 02+03 → 0.576; + SVD/PCA → 0.578; + OOF Ridge (CLIP img 0.587,
+  TF-IDF 0.335, CLIP text 0.281) як ознаки → 0.611; 3 сіди → **0.6125** (nested-перевірка 0.612).
+  Сабмішн `submissions/04_baseline_lgb_stack.csv`. LB: _(ще не відправлено)_.
 
 ## Правила
 - Оригінальні дані/мітки змагання 2019 **не використовувати** (це витік). Ідеї з публічних
@@ -42,12 +56,19 @@ Kaggle: https://www.kaggle.com/competitions/deep-learning-for-computer-vision-an
 ## Модулі
 - `src/config.py` — шляхи, константи. `src/utils.py` — seed, qwk, OptimizedRounder, write_submission.
 - `src/data.py` — завантаження, індекс зображень, фолди, мета-ознаки тексту.
+- `src/features.py` — regex-ознаки тексту (тип, вік у місяцях, порода, здоров'я…), групи
+  майже-дублікатів, OOF kNN-target ознаки (для TF-IDF і для CLIP-ембедінгів).
+- `src/images.py` — CLIP ViT-L/14 (`datacomp_xl_s13b_b90k`): ембедінги + якість фото за один
+  прохід, zero-shot ознаки, агрегація по тварині (first/mean/max).
+- `src/models.py` — `run_lgb_cv()` (LightGBM на фолдах → OOF, test, QWK, importance), `ridge_oof()`.
 - `src/text.py` (TODO) — Dataset/fine-tune трансформера, `run_text_cv(train, test, cfg, device)`.
-- `src/images.py` (TODO) — CLIP-ембедінги, агрегація по тварині, zero-shot ознаки.
+- `src/pet_adoption/` — залишок scaffold, не використовується.
 
 ## План
-1. `01_eda` → 2. `02_baseline` (TF-IDF+SVD+meta → LGBM) → 3. `03_text_models` (DeBERTa/XLM-R) →
-4. `04_image_models` (CLIP) → 5. `05_fusion_final` (стекінг, пороги, retrain на всіх даних, сабмішн)
+1. `01_eda` → 2. `02_text_features` (regex, дублікати, kNN-target → `text_feats_*.parquet`) →
+3. `03_image_features` (CLIP, zero-shot, якість → `img_feats_*.parquet`, `clip_*.npy`) →
+4. `04_baseline` (TF-IDF+SVD + ознаки 02/03 → LGBM) → 5. `05_text_models` (DeBERTa/XLM-R) →
+6. `06_fusion_final` (стекінг, пороги, retrain на всіх даних, сабмішн)
 → опис рішення на форумі змагання (+10 балів).
 
 Примітка: порада з опису змагання «перенавчити на train + test» стосується всіх *розмічених*
