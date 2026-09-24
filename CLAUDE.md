@@ -48,6 +48,8 @@ Kaggle: https://www.kaggle.com/competitions/deep-learning-for-computer-vision-an
 - 07 фінал: LightGBM на ручних ознаках + 7 OOF 1-го рівня (лінійний бленд 0.620, LGBM тільки на OOF
   0.618), 5 сідів → **0.6210**; чесна оцінка (пороги з інших фолдів) 0.6124. Retrain на всьому train,
   438 раундів; corr з fold-average 0.9996. Сабмішн `submissions/07_final_stack.csv` → **public LB 0.8088** (04: 0.7912).
+- final_submission (з нуля, 43.8 хв): усі Ridge/голова відтворились точно; DeBERTa 0.3494 (GPU-недетермінованість);
+  стек **0.6243**, чесна 0.6194; `submissions/submission.csv` (у git). LB: _(ще не відправлено)_.
 
 ## Правила
 - Оригінальні дані/мітки змагання 2019 **не використовувати** (це витік). Ідеї з публічних
@@ -80,7 +82,8 @@ Kaggle: https://www.kaggle.com/competitions/deep-learning-for-computer-vision-an
   `run_head_cv`); фіксовані епохи без early stopping.
 - `src/text.py` — fine-tune трансформера на регресію (`TextConfig`, `run_text_cv`). Ваги вантажити
   у fp32 (`dtype=torch.float32`): transformers 5 інакше бере fp16 з чекпойнта → NaN. Потрібен `protobuf`.
-- `src/pet_adoption/` — залишок scaffold, не використовується.
+- `src/pipeline.py` — етапи фінального конвеєра (`FinalConfig` з усіма зафіксованими параметрами).
+- `tests/test_core.py` — швидкі тести (маппінг ID у сабмішні, пороги 1–4, OOF kNN, парсинг віку): `uv run pytest`.
 - `scripts/run_nb.py` — виконати ноутбук in-place з live-логом у `logs/<name>.log` (довгі прогони запускати так).
 
 ## План
@@ -88,7 +91,9 @@ Kaggle: https://www.kaggle.com/competitions/deep-learning-for-computer-vision-an
 3. `03_image_features` (CLIP, zero-shot, якість → `img_feats_*.parquet`, `clip_*.npy`) →
 4. `04_baseline` (TF-IDF+SVD + ознаки 02/03 → LGBM) → 5. `05_text_models` (DeBERTa) →
 6. `06_image_head` (attention-голова на ембедінгах фото) →
-7. `07_fusion_final` (стекінг, пороги, retrain на всіх даних, сабмішн)
+7. `07_fusion_final` (стекінг, пороги, retrain на всіх даних, сабмішн) →
+8. `final_submission.ipynb` — самодостатній конвеєр: `data/raw` → `submissions/submission.csv`
+   (кеш дорогих кроків у `data/final_cache/`; `USE_CACHE=False` — усе з нуля)
 → опис рішення на форумі змагання (+10 балів).
 
 Примітка: порада з опису змагання «перенавчити на train + test» стосується всіх *розмічених*

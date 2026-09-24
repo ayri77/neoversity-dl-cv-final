@@ -1,12 +1,34 @@
+# Data, models, generated outputs
 data/
 models/
 submissions/*.csv
+!submissions/submission.csv
 *.pt
 *.pth
 *.npy
-.ipynb_checkpoints/
-__pycache__/
-.env
-.venv/
-~/.kaggle/
+*.parquet
 logs/
+
+# Experiment-tracking leftovers and temporary files
+artifacts/
+mlruns/
+mlartifacts/
+*.db
+*.sqlite
+.tmp/
+tmp/
+
+# Python / tooling
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.ipynb_checkpoints/
+.venv/
+.uv-cache/
+.uv-python/
+
+# Secrets
+.env
+kaggle.json

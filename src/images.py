@@ -225,6 +225,7 @@ def encoder_feature_pipeline(
     device: str = "cuda",
     batch_size: int = 64,
     num_workers: int = 6,
+    use_cache: bool = True,
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
     """Embeddings → zero-shot → per-pet aggregation → OOF kNN-target → text-image similarity.
 
@@ -239,7 +240,7 @@ def encoder_feature_pipeline(
 
     emb_path = out_dir / f"{tag}_img_emb.npy"
     model, preprocess, tokenizer = load_clip(model_name, pretrained, device)
-    if emb_path.exists():
+    if use_cache and emb_path.exists():
         img_emb = np.load(emb_path)
     else:
         img_emb, _ = extract_image_features(

@@ -4,7 +4,7 @@
 а в оригінальному PetFinder 2019 найсильнішими були саме вони (вік, порода, тип тварини).
 Тому я **відновлював їх з фото й тексту**, а потім склав модальності стекінгом.
 
-**Код:** [посилання на репозиторій] — ноутбуки `01`–`07` + модулі в `src/`.
+**Код:** https://github.com/ayri77/neoversity-dl-cv-final — `notebooks/final_submission.ipynb` (увесь конвеєр від сирих даних до сабмішну), дослідницькі ноутбуки `01`–`07` і модулі в `src/`.
 
 | | OOF QWK (5 фолдів) | Public LB |
 |---|---|---|
@@ -133,7 +133,7 @@ pooling (Ilse et al., 2018) і регресія. Використовую до 1
 uv sync
 uv run python -m ipykernel install --user --name neoversity-dl
 # дані змагання → data/raw/{train,test,sample_submission}.csv, data/raw/images/{train,test}/
-uv run python scripts/run_nb.py notebooks/01_eda.ipynb   # і далі 02 … 07 по черзі
+uv run python scripts/run_nb.py notebooks/final_submission.ipynb   # → submissions/submission.csv
 ```
 
 GPU: 12 GB вистачає (найважче — SigLIP2 і DeBERTa, по ~7 GB). Найдовші кроки — SigLIP2 (~13 хв) і DeBERTa (~18 хв), решта — хвилини.
