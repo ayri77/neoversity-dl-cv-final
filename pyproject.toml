@@ -23,6 +23,7 @@ dependencies = [
     "jupyterlab",
     "ipykernel",
     "ipywidgets",
+    "protobuf>=7.36.2",
 ]
 
 [tool.setuptools]

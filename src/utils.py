@@ -10,7 +10,7 @@ import pandas as pd
 from scipy.optimize import minimize
 from sklearn.metrics import cohen_kappa_score
 
-from src.config import ID_COL, SUBMISSIONS_DIR, TARGET_COL
+from src.config import ID_COL, SUBMISSIONS_DIR, TARGET_COL, TEST_CSV
 
 
 def seed_everything(seed: int = 42) -> None:
@@ -68,8 +68,18 @@ class OptimizedRounder:
 
 
 def write_submission(ids: pd.Series, preds: np.ndarray, name: str) -> str:
-    """Save predictions in the competition format and return the path."""
-    sub = pd.DataFrame({ID_COL: ids, TARGET_COL: preds.astype(int)})
+    """Save predictions in the competition format and return the path.
+
+    ``load_data()`` zero-pads PetIDs to match image file names, but Kaggle
+    expects the ids exactly as written in test.csv (4 of them lack the leading
+    zero), so ids are mapped back to the raw spelling and checked against it.
+    """
+    raw = pd.read_csv(TEST_CSV, dtype={ID_COL: str})[ID_COL]
+    to_raw = dict(zip(raw.str.zfill(9), raw))
+    ids = pd.Series(ids).astype(str).map(lambda i: to_raw.get(i, i))
+    if set(ids) != set(raw) or len(ids) != len(raw):
+        raise ValueError(f"Submission ids do not match test.csv: {len(set(raw) - set(ids))} missing")
+    sub = pd.DataFrame({ID_COL: ids.values, TARGET_COL: np.asarray(preds).astype(int)})
     path = SUBMISSIONS_DIR / f"{name}.csv"
     sub.to_csv(path, index=False)
     print(f"Saved {path}  shape={sub.shape}")

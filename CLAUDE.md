@@ -16,6 +16,7 @@ Kaggle: https://www.kaggle.com/competitions/deep-learning-for-computer-vision-an
   до зсуву; `OptimizedRounder(labels=(1,2,3,4))` повертає одразу 1–4.
 - `PetID` — 9-символьний hex-рядок; читати як `str` (є ID на кшталт `10e723583`). У test.csv
   4 ID втратили ведучий нуль — `load_data()` робить `zfill(9)`. Після цього фото є в усіх тварин.
+  **Kaggle чекає ID як у test.csv (без нуля)** — `write_submission()` сам мапить назад і перевіряє набір ID.
 - У `images/test/` є 8 тварин, яких немає в test.csv — ігноруються.
 - `sample_submission.csv` — лише 4 рядки-приклади; сабмішн будувати по ID з `test.csv`
   (формат `PetID,AdoptionSpeed`, з заголовком, порядок рядків не важливий).
@@ -34,7 +35,10 @@ Kaggle: https://www.kaggle.com/competitions/deep-learning-for-computer-vision-an
   (baby/adult/old, |ρ|≈0.31–0.35), порода pure/mixed (|ρ|≈0.28), img_knn_y (ρ=0.49).
 - 04 бейзлайн: ручні ознаки 02+03 → 0.576; + SVD/PCA → 0.578; + OOF Ridge (CLIP img 0.587,
   TF-IDF 0.335, CLIP text 0.281) як ознаки → 0.611; 3 сіди → **0.6125** (nested-перевірка 0.612).
-  Сабмішн `submissions/04_baseline_lgb_stack.csv`. LB: _(ще не відправлено)_.
+  Сабмішн `submissions/04_baseline_lgb_stack.csv` → **public LB 0.7912**. Розрив з OOF не пояснюється
+  дублікатами (частка двійників у test ≈ у val-фолдах) — ймовірно, мала public-частина. Орієнтир — OOF.
+- 05 DeBERTa-v3-base (3 еп., lr 2e-5, ~18 хв на 5 фолдів): OOF QWK 0.3445 (TF-IDF+Ridge 0.335,
+  frozen bge-m3+Ridge 0.29). У стекінгу: 0.6064 → 0.6112 (+0.005, на рівні шуму). Текст — стеля ~0.35.
 
 ## Правила
 - Оригінальні дані/мітки змагання 2019 **не використовувати** (це витік). Ідеї з публічних
@@ -61,8 +65,10 @@ Kaggle: https://www.kaggle.com/competitions/deep-learning-for-computer-vision-an
 - `src/images.py` — CLIP ViT-L/14 (`datacomp_xl_s13b_b90k`): ембедінги + якість фото за один
   прохід, zero-shot ознаки, агрегація по тварині (first/mean/max).
 - `src/models.py` — `run_lgb_cv()` (LightGBM на фолдах → OOF, test, QWK, importance), `ridge_oof()`.
-- `src/text.py` (TODO) — Dataset/fine-tune трансформера, `run_text_cv(train, test, cfg, device)`.
+- `src/text.py` — fine-tune трансформера на регресію (`TextConfig`, `run_text_cv`). Ваги вантажити
+  у fp32 (`dtype=torch.float32`): transformers 5 інакше бере fp16 з чекпойнта → NaN. Потрібен `protobuf`.
 - `src/pet_adoption/` — залишок scaffold, не використовується.
+- `scripts/run_nb.py` — виконати ноутбук in-place з live-логом у `logs/<name>.log` (довгі прогони запускати так).
 
 ## План
 1. `01_eda` → 2. `02_text_features` (regex, дублікати, kNN-target → `text_feats_*.parquet`) →
