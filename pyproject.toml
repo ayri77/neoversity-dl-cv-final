@@ -1,0 +1,41 @@
+[project]
+name = "neoversity-dl-cv-final"
+version = "0.1.0"
+description = "PetFinder.my adoption speed prediction — final DL project (CV + NLP)"
+requires-python = ">=3.11"
+dependencies = [
+    "numpy",
+    "pandas",
+    "pyarrow",
+    "scikit-learn",
+    "scipy",
+    "lightgbm",
+    "matplotlib",
+    "seaborn",
+    "tqdm",
+    "pillow",
+    "torch>=2.5",
+    "torchvision",
+    "transformers",
+    "sentencepiece",
+    "open_clip_torch",
+    "optuna",
+    "jupyterlab",
+    "ipykernel",
+    "ipywidgets",
+]
+
+[tool.setuptools]
+packages = ["src"]
+
+# --- PyTorch with CUDA (NVIDIA, 12 GB) ---------------------------------------
+# cu128 works with driver >= 570; if `nvidia-smi` shows an older driver,
+# switch both index-url and the pin below to cu126 (driver >= 560) or cu124.
+[[tool.uv.index]]
+name = "pytorch-cu128"
+url = "https://download.pytorch.org/whl/cu128"
+explicit = true
+
+[tool.uv.sources]
+torch = { index = "pytorch-cu128" }
+torchvision = { index = "pytorch-cu128" }

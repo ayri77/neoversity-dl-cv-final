@@ -1,0 +1,11 @@
+data/
+models/
+submissions/*.csv
+*.pt
+*.pth
+*.npy
+.ipynb_checkpoints/
+__pycache__/
+.env
+.venv/
+~/.kaggle/

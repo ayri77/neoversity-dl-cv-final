@@ -1,0 +1,20 @@
+{
+  "run_id": "20260903T063428701073Z_5785c4b2",
+  "created_at": "2026-09-03T06:34:28.701073+00:00",
+  "status": "completed",
+  "experiment_name": "test",
+  "feature_set": "synthetic",
+  "model_family": "none",
+  "modalities": [],
+  "seed": 42,
+  "dataset_id": null,
+  "dataset_hash": null,
+  "folds_id": null,
+  "folds_hash": null,
+  "git_commit": null,
+  "run_type": "smoke",
+  "artifacts": {
+    "config": "config.yaml",
+    "metrics": "metrics.json"
+  }
+}

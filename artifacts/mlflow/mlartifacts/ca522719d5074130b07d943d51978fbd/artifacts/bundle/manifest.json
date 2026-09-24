@@ -1,0 +1,23 @@
+{
+  "run_id": "20260903T063556587613Z_bf8c58ab",
+  "created_at": "2026-09-03T06:35:56.587613+00:00",
+  "status": "completed",
+  "experiment_name": "foundation-smoke",
+  "feature_set": "synthetic-score",
+  "model_family": "none",
+  "modalities": [],
+  "seed": 42,
+  "dataset_id": "synthetic-ordinal-v1",
+  "dataset_hash": "0e8c335831c84add01f1b55e384cda997f9c97f188d53fbfa07bdc5c355489a1",
+  "folds_id": "synthetic-placeholder-v1",
+  "folds_hash": "061564f52e87b4972f876a90030612cf75892112c8d0793332fb4191abc72f46",
+  "git_commit": null,
+  "run_type": "smoke",
+  "artifacts": {
+    "config": "config.yaml",
+    "metrics": "metrics.json",
+    "oof_predictions": "oof_predictions.parquet",
+    "test_predictions": "test_predictions.parquet",
+    "thresholds": "thresholds.json"
+  }
+}

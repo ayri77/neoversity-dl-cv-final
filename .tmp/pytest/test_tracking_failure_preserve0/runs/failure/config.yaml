@@ -1,0 +1,6 @@
+seed: 42
+thresholds:
+  method: test
+classes:
+- 0
+- 1
