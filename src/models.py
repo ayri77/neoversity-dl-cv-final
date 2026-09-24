@@ -48,13 +48,15 @@ def run_lgb_cv(
     """LightGBM regression on fixed folds.
 
     Returns dict with ``oof``, ``test`` (fold-averaged), ``qwk`` (OOF, optimised
-    thresholds), ``rounder`` and ``importance`` (mean gain per feature).
+    thresholds), ``rounder``, ``importance`` (mean gain per feature) and
+    ``best_iters`` (early-stopping round per fold, used to size a full-data refit).
     """
     params = {**LGB_PARAMS, **(params or {})}
     y = np.asarray(y, dtype=float)
     oof = np.zeros(len(X_train))
     pred_test = np.zeros(len(X_test))
     importance = np.zeros(X_train.shape[1])
+    best_iters = []
     n_folds = len(np.unique(folds))
     for f in np.unique(folds):
         tr, va = folds != f, folds == f
@@ -68,6 +70,7 @@ def run_lgb_cv(
         oof[va] = model.predict(X_train[va], num_iteration=model.best_iteration)
         pred_test += model.predict(X_test, num_iteration=model.best_iteration) / n_folds
         importance += model.feature_importance("gain") / n_folds
+        best_iters.append(model.best_iteration)
         if verbose:
             rmse = np.sqrt(np.mean((oof[va] - y[va]) ** 2))
             print(f"fold {f}: best_iter={model.best_iteration:4d}  rmse={rmse:.4f}")
@@ -76,4 +79,11 @@ def run_lgb_cv(
     if verbose:
         print(f"OOF QWK: {score:.4f}   thresholds: {rounder.coef_.round(3)}")
     imp = pd.Series(importance, index=X_train.columns).sort_values(ascending=False)
-    return {"oof": oof, "test": pred_test, "qwk": score, "rounder": rounder, "importance": imp}
+    return {"oof": oof, "test": pred_test, "qwk": score, "rounder": rounder, "importance": imp,
+            "best_iters": best_iters}
+
+
+def fit_lgb_full(X: pd.DataFrame, y: np.ndarray, num_boost_round: int, params: dict | None = None) -> lgb.Booster:
+    """Refit LightGBM on all labelled rows with a fixed number of rounds (taken from CV)."""
+    params = {**LGB_PARAMS, **(params or {})}
+    return lgb.train(params, lgb.Dataset(X, np.asarray(y, dtype=float)), num_boost_round=num_boost_round)

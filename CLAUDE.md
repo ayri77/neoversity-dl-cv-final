@@ -45,6 +45,9 @@ Kaggle: https://www.kaggle.com/competitions/deep-learning-for-computer-vision-an
 - 06 голова з gated attention на ембедінгах усіх фото (CLIP⊕SigLIP2, ≤12 фото, 7 епох × 5 сідів,
   секунди на фолд): OOF 0.611 сама; у стеку 0.617 → 0.621 (corr з Ridge SigLIP 0.94 — attention майже
   рівномірна, перше фото трохи важливіше). Більше епох → перенавчання; текстовий токен не допомагає.
+- 07 фінал: LightGBM на ручних ознаках + 7 OOF 1-го рівня (лінійний бленд 0.620, LGBM тільки на OOF
+  0.618), 5 сідів → **0.6210**; чесна оцінка (пороги з інших фолдів) 0.6124. Retrain на всьому train,
+  438 раундів; corr з fold-average 0.9996. Сабмішн `submissions/07_final_stack.csv`. LB: _(ще не відправлено)_.
 
 ## Правила
 - Оригінальні дані/мітки змагання 2019 **не використовувати** (це витік). Ідеї з публічних
@@ -71,7 +74,8 @@ Kaggle: https://www.kaggle.com/competitions/deep-learning-for-computer-vision-an
 - `src/images.py` — CLIP ViT-L/14 (`datacomp_xl_s13b_b90k`): ембедінги + якість фото за один
   прохід, zero-shot ознаки, агрегація по тварині (first/mean/max); `encoder_feature_pipeline()` —
   той самий пайплайн для будь-якого open_clip-енкодера з префіксом (`siglip_…`, `img_feats_siglip_*.parquet`).
-- `src/models.py` — `run_lgb_cv()` (LightGBM на фолдах → OOF, test, QWK, importance), `ridge_oof()`.
+- `src/models.py` — `run_lgb_cv()` (LightGBM на фолдах → OOF, test, QWK, importance, best_iters),
+  `fit_lgb_full()` (refit на всьому train), `ridge_oof()`.
 - `src/image_head.py` — MIL-голова з gated attention по фото (`HeadConfig`, `build_bags`, `train_head`,
   `run_head_cv`); фіксовані епохи без early stopping.
 - `src/text.py` — fine-tune трансформера на регресію (`TextConfig`, `run_text_cv`). Ваги вантажити
