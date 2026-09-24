@@ -42,6 +42,9 @@ Kaggle: https://www.kaggle.com/competitions/deep-learning-for-computer-vision-an
 - 03 §6 SigLIP2 (`ViT-SO400M-16-SigLIP2-384`, ~13 хв на всі фото): ручні ознаки 0.558 (як CLIP),
   CLIP+SigLIP2 0.577; Ridge на ембедінгах 0.600 (CLIP 0.587). Повний стек: 0.6064 → **0.6170**.
   Zero-shot «порода» у SigLIP2 майже без сигналу (промпти підібрані під CLIP), вік — сильний.
+- 06 голова з gated attention на ембедінгах усіх фото (CLIP⊕SigLIP2, ≤12 фото, 7 епох × 5 сідів,
+  секунди на фолд): OOF 0.611 сама; у стеку 0.617 → 0.621 (corr з Ridge SigLIP 0.94 — attention майже
+  рівномірна, перше фото трохи важливіше). Більше епох → перенавчання; текстовий токен не допомагає.
 
 ## Правила
 - Оригінальні дані/мітки змагання 2019 **не використовувати** (це витік). Ідеї з публічних
@@ -69,6 +72,8 @@ Kaggle: https://www.kaggle.com/competitions/deep-learning-for-computer-vision-an
   прохід, zero-shot ознаки, агрегація по тварині (first/mean/max); `encoder_feature_pipeline()` —
   той самий пайплайн для будь-якого open_clip-енкодера з префіксом (`siglip_…`, `img_feats_siglip_*.parquet`).
 - `src/models.py` — `run_lgb_cv()` (LightGBM на фолдах → OOF, test, QWK, importance), `ridge_oof()`.
+- `src/image_head.py` — MIL-голова з gated attention по фото (`HeadConfig`, `build_bags`, `train_head`,
+  `run_head_cv`); фіксовані епохи без early stopping.
 - `src/text.py` — fine-tune трансформера на регресію (`TextConfig`, `run_text_cv`). Ваги вантажити
   у fp32 (`dtype=torch.float32`): transformers 5 інакше бере fp16 з чекпойнта → NaN. Потрібен `protobuf`.
 - `src/pet_adoption/` — залишок scaffold, не використовується.
@@ -77,8 +82,9 @@ Kaggle: https://www.kaggle.com/competitions/deep-learning-for-computer-vision-an
 ## План
 1. `01_eda` → 2. `02_text_features` (regex, дублікати, kNN-target → `text_feats_*.parquet`) →
 3. `03_image_features` (CLIP, zero-shot, якість → `img_feats_*.parquet`, `clip_*.npy`) →
-4. `04_baseline` (TF-IDF+SVD + ознаки 02/03 → LGBM) → 5. `05_text_models` (DeBERTa/XLM-R) →
-6. `06_fusion_final` (стекінг, пороги, retrain на всіх даних, сабмішн)
+4. `04_baseline` (TF-IDF+SVD + ознаки 02/03 → LGBM) → 5. `05_text_models` (DeBERTa) →
+6. `06_image_head` (attention-голова на ембедінгах фото) →
+7. `07_fusion_final` (стекінг, пороги, retrain на всіх даних, сабмішн)
 → опис рішення на форумі змагання (+10 балів).
 
 Примітка: порада з опису змагання «перенавчити на train + test» стосується всіх *розмічених*
