@@ -19,30 +19,40 @@ from src.config import (
 )
 
 IMAGE_EXTS = (".jpg", ".jpeg", ".png")
+PET_ID_LEN = 9
 
 
 def load_data() -> tuple[pd.DataFrame, pd.DataFrame]:
-    """Load train/test csv; fill empty descriptions with an empty string."""
-    train = pd.read_csv(TRAIN_CSV)
-    test = pd.read_csv(TEST_CSV)
+    """Load train/test csv; fill empty descriptions with an empty string.
+
+    PetIDs are read as strings. Some ids in the provided test.csv lost their
+    leading zero (e.g. ``95314294`` vs image ``095314294-1.jpg``), so they are
+    left-padded back to the canonical 9-char length.
+    """
+    train = pd.read_csv(TRAIN_CSV, dtype={ID_COL: str})
+    test = pd.read_csv(TEST_CSV, dtype={ID_COL: str})
     for df in (train, test):
         df[TEXT_COL] = df[TEXT_COL].fillna("").astype(str)
+        df[ID_COL] = df[ID_COL].str.zfill(PET_ID_LEN)
     return train, test
 
 
 def build_image_index() -> pd.DataFrame:
-    """Scan the images folder → DataFrame(PetID, path, img_idx).
+    """Scan the images folder recursively → DataFrame(PetID, path, img_idx, split).
 
-    Files are expected to be named like ``<PetID>-<n>.jpg``.
+    Files are expected to be named like ``<PetID>-<n>.jpg``; ``split`` is the
+    name of the parent folder (``train`` / ``test``).
     """
     rows = []
-    for p in IMAGES_DIR.iterdir():
+    for p in IMAGES_DIR.rglob("*"):
         if p.suffix.lower() not in IMAGE_EXTS:
             continue
         m = re.match(r"^([0-9a-f]+)-(\d+)$", p.stem)
         if not m:
             continue
-        rows.append({ID_COL: m.group(1), "path": str(p), "img_idx": int(m.group(2))})
+        rows.append(
+            {ID_COL: m.group(1), "path": str(p), "img_idx": int(m.group(2)), "split": p.parent.name}
+        )
     return pd.DataFrame(rows).sort_values([ID_COL, "img_idx"]).reset_index(drop=True)
 
 

@@ -42,15 +42,15 @@ class OptimizedRounder:
     continuous score and tuning thresholds beats direct classification.
     """
 
-    def __init__(self, n_classes: int = 5, initial_coef: list[float] | None = None):
-        self.n_classes = n_classes
+    def __init__(self, labels: tuple[int, ...] = (1, 2, 3, 4), initial_coef: list[float] | None = None):
+        # Labels are kept as-is (1..4 in this competition) — no shifting needed
+        self.labels = np.asarray(labels)
         self.coef_: np.ndarray | None = None
-        # Default cut-points sit between consecutive integer labels
-        self._initial = initial_coef or [i + 0.5 for i in range(n_classes - 1)]
+        # Default cut-points sit between consecutive labels
+        self._initial = initial_coef or list((self.labels[:-1] + self.labels[1:]) / 2)
 
-    @staticmethod
-    def _apply(coef: np.ndarray, x: np.ndarray) -> np.ndarray:
-        return np.digitize(x, np.sort(coef))
+    def _apply(self, coef: np.ndarray, x: np.ndarray) -> np.ndarray:
+        return self.labels[np.digitize(x, np.sort(coef))]
 
     def _loss(self, coef: np.ndarray, x: np.ndarray, y: np.ndarray) -> float:
         return -qwk(y, self._apply(coef, x))
