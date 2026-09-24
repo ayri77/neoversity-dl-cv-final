@@ -39,6 +39,9 @@ Kaggle: https://www.kaggle.com/competitions/deep-learning-for-computer-vision-an
   дублікатами (частка двійників у test ≈ у val-фолдах) — ймовірно, мала public-частина. Орієнтир — OOF.
 - 05 DeBERTa-v3-base (3 еп., lr 2e-5, ~18 хв на 5 фолдів): OOF QWK 0.3445 (TF-IDF+Ridge 0.335,
   frozen bge-m3+Ridge 0.29). У стекінгу: 0.6064 → 0.6112 (+0.005, на рівні шуму). Текст — стеля ~0.35.
+- 03 §6 SigLIP2 (`ViT-SO400M-16-SigLIP2-384`, ~13 хв на всі фото): ручні ознаки 0.558 (як CLIP),
+  CLIP+SigLIP2 0.577; Ridge на ембедінгах 0.600 (CLIP 0.587). Повний стек: 0.6064 → **0.6170**.
+  Zero-shot «порода» у SigLIP2 майже без сигналу (промпти підібрані під CLIP), вік — сильний.
 
 ## Правила
 - Оригінальні дані/мітки змагання 2019 **не використовувати** (це витік). Ідеї з публічних
@@ -63,7 +66,8 @@ Kaggle: https://www.kaggle.com/competitions/deep-learning-for-computer-vision-an
 - `src/features.py` — regex-ознаки тексту (тип, вік у місяцях, порода, здоров'я…), групи
   майже-дублікатів, OOF kNN-target ознаки (для TF-IDF і для CLIP-ембедінгів).
 - `src/images.py` — CLIP ViT-L/14 (`datacomp_xl_s13b_b90k`): ембедінги + якість фото за один
-  прохід, zero-shot ознаки, агрегація по тварині (first/mean/max).
+  прохід, zero-shot ознаки, агрегація по тварині (first/mean/max); `encoder_feature_pipeline()` —
+  той самий пайплайн для будь-якого open_clip-енкодера з префіксом (`siglip_…`, `img_feats_siglip_*.parquet`).
 - `src/models.py` — `run_lgb_cv()` (LightGBM на фолдах → OOF, test, QWK, importance), `ridge_oof()`.
 - `src/text.py` — fine-tune трансформера на регресію (`TextConfig`, `run_text_cv`). Ваги вантажити
   у fp32 (`dtype=torch.float32`): transformers 5 інакше бере fp16 з чекпойнта → NaN. Потрібен `protobuf`.

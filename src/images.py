@@ -86,7 +86,7 @@ def extract_image_features(
         persistent_workers=False,
     )
     embs, quals = [], []
-    for x, q in tqdm(loader, desc="CLIP images"):
+    for x, q in tqdm(loader, desc="images"):
         with torch.autocast(device_type="cuda", dtype=torch.bfloat16, enabled=device.startswith("cuda")):
             e = model.encode_image(x.to(device, non_blocking=True))
         embs.append(torch.nn.functional.normalize(e.float(), dim=-1).cpu().numpy().astype(np.float16))
@@ -209,3 +209,71 @@ def pet_embeddings(image_index: pd.DataFrame, img_emb: np.ndarray) -> tuple[np.n
     mean = np.add.reduceat(emb, start, axis=0)
     mean /= np.linalg.norm(mean, axis=1, keepdims=True)
     return uniq, emb[start], mean
+
+
+# --------------------------------------------------------------------------- #
+# Full pipeline for an additional encoder
+# --------------------------------------------------------------------------- #
+def encoder_feature_pipeline(
+    tag: str,
+    model_name: str,
+    pretrained: str,
+    image_index: pd.DataFrame,
+    train: pd.DataFrame,
+    test: pd.DataFrame,
+    out_dir,
+    device: str = "cuda",
+    batch_size: int = 64,
+    num_workers: int = 6,
+) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """Embeddings → zero-shot → per-pet aggregation → OOF kNN-target → text-image similarity.
+
+    Everything is prefixed with ``tag`` so features of several encoders can be
+    combined. Photo-quality stats are not repeated (they are encoder-independent
+    and already come from the CLIP pass). Saves to ``out_dir``:
+    ``{tag}_img_emb.npy`` (cache), ``{tag}_pet_{mean,first}_{split}.npy``,
+    ``{tag}_text_{split}.npy`` and ``img_feats_{tag}_{split}.parquet``.
+    """
+    from src.config import TARGET_COL, TEXT_COL
+    from src.features import knn_target_features
+
+    emb_path = out_dir / f"{tag}_img_emb.npy"
+    model, preprocess, tokenizer = load_clip(model_name, pretrained, device)
+    if emb_path.exists():
+        img_emb = np.load(emb_path)
+    else:
+        img_emb, _ = extract_image_features(
+            image_index["path"].tolist(), model, preprocess, device, batch_size, num_workers
+        )
+        np.save(emb_path, img_emb)
+    assert len(img_emb) == len(image_index)
+
+    # Zero-shot with the model's own temperature (SigLIP ≈ 110, CLIP ≈ 100)
+    zs = zero_shot_features(img_emb, model, tokenizer, device, logit_scale=float(model.logit_scale.exp()))
+    pet_zs = aggregate_per_pet(image_index, zs, aggs=("first", "mean", "max"))
+
+    pet_ids, emb_first, emb_mean = pet_embeddings(image_index, img_emb)
+    pos = pd.Series(np.arange(len(pet_ids)), index=pet_ids)
+    tr_pos, te_pos = pos[train[ID_COL]].to_numpy(), pos[test[ID_COL]].to_numpy()
+    for split, p in (("train", tr_pos), ("test", te_pos)):
+        np.save(out_dir / f"{tag}_pet_mean_{split}.npy", emb_mean[p])
+        np.save(out_dir / f"{tag}_pet_first_{split}.npy", emb_first[p])
+
+    y = train[TARGET_COL].to_numpy(dtype=float)
+    knn_tr, knn_te = knn_target_features(emb_mean[tr_pos], emb_mean[te_pos], y, train["fold"].to_numpy(), prefix="img")
+
+    feats = {}
+    for split, df, p, knn in (("train", train, tr_pos, knn_tr), ("test", test, te_pos, knn_te)):
+        t = encode_texts(df[TEXT_COL].str.slice(0, 300).tolist(), model, tokenizer, device)
+        np.save(out_dir / f"{tag}_text_{split}.npy", t)
+        out = df[[ID_COL]].merge(pet_zs, on=ID_COL, how="left")
+        out[knn.columns] = knn.to_numpy()
+        out["txt_img_mean"] = (t * emb_mean[p]).sum(1)
+        out["txt_img_first"] = (t * emb_first[p]).sum(1)
+        out = out.rename(columns={c: f"{tag}_{c}" for c in out.columns if c != ID_COL})
+        out.to_parquet(out_dir / f"img_feats_{tag}_{split}.parquet", index=False)
+        feats[split] = out
+
+    del model
+    torch.cuda.empty_cache()
+    return feats["train"], feats["test"]
