@@ -49,7 +49,10 @@ Kaggle: https://www.kaggle.com/competitions/deep-learning-for-computer-vision-an
   0.618), 5 сідів → **0.6210**; чесна оцінка (пороги з інших фолдів) 0.6124. Retrain на всьому train,
   438 раундів; corr з fold-average 0.9996. Сабмішн `submissions/07_final_stack.csv` → **public LB 0.8088** (04: 0.7912).
 - final_submission (з нуля, 43.8 хв): усі Ridge/голова відтворились точно; DeBERTa 0.3494 (GPU-недетермінованість);
-  стек **0.6243**, чесна 0.6194; `submissions/submission.csv` (у git). LB: _(ще не відправлено)_.
+  стек **0.6243**, чесна 0.6194; `submissions/submission.csv` (у git), відправлено. Public-лідерборд: 1-е місце.
+- 08 (поза фіналом): ансамбль прогонів 07+final (чесна 0.6145), DINOv2-L (Ridge 0.563, corr з CLIP/SigLIP 0.89;
+  у стеку −0.001…−0.007), промпти під SigLIP2 (порода |ρ| 0.04→0.34, але в стеку −0.004) — **жоден не кращий
+  за фінал**, нових сабмішнів немає. Плато ~0.62 OOF: нові заморожені ознаки фото дублюють наявний сигнал.
 
 ## Правила
 - Оригінальні дані/мітки змагання 2019 **не використовувати** (це витік). Ідеї з публічних
@@ -73,7 +76,7 @@ Kaggle: https://www.kaggle.com/competitions/deep-learning-for-computer-vision-an
 - `src/data.py` — завантаження, індекс зображень, фолди, мета-ознаки тексту.
 - `src/features.py` — regex-ознаки тексту (тип, вік у місяцях, порода, здоров'я…), групи
   майже-дублікатів, OOF kNN-target ознаки (для TF-IDF і для CLIP-ембедінгів).
-- `src/images.py` — CLIP ViT-L/14 (`datacomp_xl_s13b_b90k`): ембедінги + якість фото за один
+- `src/images.py` — (також `extract_dino_embeddings` для DINOv2-L, використано лише в 08) CLIP ViT-L/14 (`datacomp_xl_s13b_b90k`): ембедінги + якість фото за один
   прохід, zero-shot ознаки, агрегація по тварині (first/mean/max); `encoder_feature_pipeline()` —
   той самий пайплайн для будь-якого open_clip-енкодера з префіксом (`siglip_…`, `img_feats_siglip_*.parquet`).
 - `src/models.py` — `run_lgb_cv()` (LightGBM на фолдах → OOF, test, QWK, importance, best_iters),

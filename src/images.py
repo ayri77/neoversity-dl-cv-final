@@ -278,3 +278,44 @@ def encoder_feature_pipeline(
     del model
     torch.cuda.empty_cache()
     return feats["train"], feats["test"]
+
+
+# --------------------------------------------------------------------------- #
+# Self-supervised encoder (no text tower): DINOv2
+# --------------------------------------------------------------------------- #
+DINO_MODEL = "facebook/dinov2-large"
+
+
+def dino_preprocess():
+    """DINOv2 eval transform: resize 256 (bicubic) → center crop 224 → ImageNet normalisation."""
+    from torchvision import transforms as T
+
+    return T.Compose([
+        T.Resize(256, interpolation=T.InterpolationMode.BICUBIC),
+        T.CenterCrop(224),
+        T.ToTensor(),
+        T.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225)),
+    ])
+
+
+@torch.no_grad()
+def extract_dino_embeddings(
+    paths: list[str], model_name: str = DINO_MODEL, device: str = "cuda",
+    batch_size: int = 128, num_workers: int = 6,
+) -> np.ndarray:
+    """Per-image DINOv2 features: [CLS ‖ mean of patch tokens], each part L2-normalised, float16."""
+    from transformers import AutoModel
+
+    model = AutoModel.from_pretrained(model_name, dtype=torch.float32).to(device).eval()
+    loader = DataLoader(PetImageDataset(paths, dino_preprocess()), batch_size=batch_size,
+                        num_workers=num_workers, pin_memory=True)
+    out = []
+    for x, _ in tqdm(loader, desc="DINOv2"):
+        with torch.autocast(device_type="cuda", dtype=torch.bfloat16, enabled=device.startswith("cuda")):
+            h = model(pixel_values=x.to(device, non_blocking=True)).last_hidden_state.float()
+        cls = torch.nn.functional.normalize(h[:, 0], dim=-1)
+        patches = torch.nn.functional.normalize(h[:, 1:].mean(1), dim=-1)
+        out.append(torch.cat([cls, patches], dim=1).cpu().numpy().astype(np.float16))
+    del model
+    torch.cuda.empty_cache()
+    return np.concatenate(out)
